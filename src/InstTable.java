@@ -33,15 +33,11 @@ public class InstTable {
 			BufferedReader bufReader = new BufferedReader(fileReader);
 			String line = "", instName;
 			StringTokenizer tokens;
-
 		
 			while((line = bufReader.readLine()) != null){
 				tokens = new StringTokenizer(line);
 				instName = tokens.nextToken(" ");
 				instMap.put(instName, new Instruction(line));
-				
-				System.out.println(instMap.get(instName).instruction + " " + instMap.get(instName).format
-						+ " " + instMap.get(instName).opcode + " " + instMap.get(instName).numberOfOperand);
 			}
 		}
 		catch (FileNotFoundException e) {
@@ -53,7 +49,46 @@ public class InstTable {
 	}
 	
 	//get, set, search 등의 함수는 자유 구현
+	public int getOpcode(String instName)
+	{
+		int opcode = 0;
+		
+		if(instMap.containsKey(instName))
+			opcode = instMap.get(instName).opcode;
+		else
+			opcode = -1;
+		
+		return opcode;
+	}
 
+	public int getNumberOfOperand(String instName)
+	{
+		int numberOfOperand = 0;
+		
+		if(instMap.containsKey(instName))
+			numberOfOperand = instMap.get(instName).numberOfOperand;
+		else
+			numberOfOperand = -1;
+		
+		return numberOfOperand;
+	}
+	
+	public int getformat(String instName)
+	{
+		int format = 0;
+		
+		if(instMap.containsKey(instName))
+			format = instMap.get(instName).format;
+		else
+			format = 0;
+		
+		return format;
+	}
+	
+	public boolean isInstruction(String name)
+	{
+		return instMap.containsKey(name);
+	}
 }
 /**
  * 명령어 하나하나의 구체적인 정보는 Instruction클래스에 담긴다.
@@ -100,6 +135,5 @@ class Instruction {
 	
 		
 	//그 외 함수 자유 구현
-	
 	
 }

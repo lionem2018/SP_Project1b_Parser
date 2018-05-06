@@ -1,6 +1,8 @@
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 
 /**
@@ -36,6 +38,8 @@ public class Assembler {
 	 * 필요한 경우 String 대신 별도의 클래스를 선언하여 ArrayList를 교체해도 무방함.
 	 */
 	ArrayList<String> codeList;
+	
+	static int locCounter;
 	
 	/**
 	 * 클래스 초기화. instruction Table을 초기화와 동시에 세팅한다.
@@ -80,6 +84,35 @@ public class Assembler {
 	 */
 	private void printSymbolTable(String fileName) {
 		// TODO Auto-generated method stub
+		try
+		{
+			File file = new File(fileName);
+			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
+			String output;
+		
+			if(file.isFile() && file.canWrite())
+			{
+				for(int i = 0; i < symtabList.size(); i++)
+				{
+					for(int j = 0; j < symtabList.get(i).getSize(); j++)
+					{
+						output = symtabList.get(i).getSymbol(j) + "\t" + symtabList.get(i).getLocation(j);
+						
+						bufferedWriter.write(output);
+						System.out.println(output);
+					}
+					
+					bufferedWriter.newLine();
+					System.out.println();
+				}
+			}
+			
+			bufferedWriter.close();
+		}
+		catch (IOException e)
+		{
+			System.err.println(e);
+		}
 		
 	}
 
@@ -91,8 +124,37 @@ public class Assembler {
 	 *    주의사항 : SymbolTable과 TokenTable은 프로그램의 section별로 하나씩 선언되어야 한다.
 	 */
 	private void pass1() {
+		int program_num = 0, tokenIndex = 0;
 		// TODO Auto-generated method stub
-		
+		String line;
+		for(int i  = 0; i < lineList.size(); i++)
+		{
+			line = lineList.get(i);
+			
+			if(line.contains("START"))
+			{
+				locCounter = 0;
+				symtabList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(program_num), instTable));
+			}
+			else if(lineList.get(i).contains("CSECT"))
+			{
+				program_num ++;
+				locCounter = 0;
+				tokenIndex = 0;
+				symtabList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(program_num), instTable));
+			}
+			
+			TokenList.get(program_num).putToken(line);
+			
+			if(TokenList.get(program_num).getToken(tokenIndex).label != null)
+			{
+				symtabList.get(program_num).putSymbol(TokenList.get(program_num).getToken(tokenIndex).label, locCounter);
+				locCounter += TokenList.get(program_num).getToken(tokenIndex).byteSize;
+			}
+			tokenIndex ++;
+		}
 	}
 	
 	/**
@@ -110,6 +172,21 @@ public class Assembler {
 	 */
 	private void loadInputFile(String inputFile) {
 		// TODO Auto-generated method stub
+		try {
+			File file = new File(inputFile);
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufReader = new BufferedReader(fileReader);
+			String line = "";
 		
+			while((line = bufReader.readLine()) != null){
+				lineList.add(line);
+			}
+		}
+		catch (FileNotFoundException e) {
+			System.out.println("파일을 열 수 없습니다.");
+		}
+		catch (IOException e) {
+			System.out.println(e);
+		}
 	}
 }
