@@ -39,7 +39,10 @@ public class Assembler {
 	 */
 	ArrayList<String> codeList;
 	
+	ArrayList<SymbolTable> literalList;
+	
 	static int locCounter;
+	static int programCounter;
 	
 	/**
 	 * 클래스 초기화. instruction Table을 초기화와 동시에 세팅한다.
@@ -50,6 +53,7 @@ public class Assembler {
 		instTable = new InstTable(instFile);
 		lineList = new ArrayList<String>();
 		symtabList = new ArrayList<SymbolTable>();
+		literalList = new ArrayList<SymbolTable>();
 		TokenList = new ArrayList<TokenTable>();
 		codeList = new ArrayList<String>();
 	}
@@ -62,10 +66,10 @@ public class Assembler {
 		assembler.loadInputFile("input.txt");
 		
 		assembler.pass1();
-		assembler.printSymbolTable("symtab_00000000");
+		assembler.printSymbolTable("symtab_20160286");
 		
 		assembler.pass2();
-		assembler.printObjectCode("output_00000000");
+		assembler.printObjectCode("output_20160286");
 		
 	}
 
@@ -96,9 +100,11 @@ public class Assembler {
 				{
 					for(int j = 0; j < symtabList.get(i).getSize(); j++)
 					{
-						output = symtabList.get(i).getSymbol(j) + "\t" + symtabList.get(i).getLocation(j);
+						output = symtabList.get(i).getSymbol(j) + "\t"
+								+ Integer.toHexString(symtabList.get(i).getLocation(j)).toUpperCase();
 						
 						bufferedWriter.write(output);
+						bufferedWriter.newLine();
 						System.out.println(output);
 					}
 					
@@ -124,9 +130,11 @@ public class Assembler {
 	 *    주의사항 : SymbolTable과 TokenTable은 프로그램의 section별로 하나씩 선언되어야 한다.
 	 */
 	private void pass1() {
-		int program_num = 0, tokenIndex = 0;
 		// TODO Auto-generated method stub
-		String line;
+		int tokenIndex = 0;
+		String line, literal;
+		Token currentToken;
+		
 		for(int i  = 0; i < lineList.size(); i++)
 		{
 			line = lineList.get(i);
@@ -135,24 +143,57 @@ public class Assembler {
 			{
 				locCounter = 0;
 				symtabList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(program_num), instTable));
+				literalList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(programCounter), instTable));
 			}
 			else if(lineList.get(i).contains("CSECT"))
 			{
-				program_num ++;
+				programCounter ++;
 				locCounter = 0;
 				tokenIndex = 0;
 				symtabList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(program_num), instTable));
+				literalList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(programCounter), instTable));
 			}
 			
-			TokenList.get(program_num).putToken(line);
+			TokenList.get(programCounter).putToken(line);
 			
-			if(TokenList.get(program_num).getToken(tokenIndex).label != null)
+			currentToken = TokenList.get(programCounter).getToken(tokenIndex);
+			
+			if(!currentToken.label.equals("") && !currentToken.label.equals("."))
 			{
-				symtabList.get(program_num).putSymbol(TokenList.get(program_num).getToken(tokenIndex).label, locCounter);
-				locCounter += TokenList.get(program_num).getToken(tokenIndex).byteSize;
+				if(currentToken.operator.equals("EQU"))
+				{
+					symtabList.get(programCounter).putSymbol(currentToken.label, operateAddress(currentToken.operand[0]));
+				}
+				else
+				{
+					symtabList.get(programCounter).putSymbol(currentToken.label, locCounter);
+				}
+				
+				if(currentToken.operand != null && currentToken.operand[0].contains("="))
+				{
+					literalList.get(programCounter).putSymbol(currentToken.operand[0], 0);
+				}
 			}
+			else if(currentToken.operator != null && currentToken.operator.equals("LTORG"))
+			{
+				for(int j = 0; j < literalList.get(programCounter).getSize(); j++)
+				{
+					literal = literalList.get(programCounter).getSymbol(j);
+					literalList.get(programCounter).modifySymbol(literal, locCounter);
+					
+					if(literal.contains("X"))
+					{
+						locCounter ++;
+					}
+					else if(literal.contains("C"))
+					{
+						locCounter += 3;  /////////////문자열 개수로 따져서 더해주어야 함
+					}
+				}
+			}
+			locCounter += currentToken.byteSize;
 			tokenIndex ++;
 		}
 	}
@@ -188,5 +229,24 @@ public class Assembler {
 		catch (IOException e) {
 			System.out.println(e);
 		}
+	}
+	
+	private int operateAddress(String inputOperand) {
+		int result = 0;
+		String operands[];
+		
+		if(inputOperand.equals("*"))
+		{
+			result = locCounter;
+		}
+		else
+		{
+			if(inputOperand.contains("-"))
+			{
+				operands = inputOperand.split("-");
+				result = symtabList.get(programCounter).search(operands[0]) - symtabList.get(programCounter).search(operands[1]);
+			}
+		}		
+		return result;
 	}
 }

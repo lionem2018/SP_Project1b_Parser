@@ -144,11 +144,14 @@ class Token {
 			}
 
 			if (operator.contains("+")) {
-				setFlag(TokenTable.eFlag, 1);
 				byteSize = 4;
+				setFlag(TokenTable.eFlag, 1);
 			} else {
-				setFlag(TokenTable.pFlag, 1);
 				byteSize = getInstSize(operator);
+				
+				if(byteSize > 0)
+					setFlag(TokenTable.pFlag, 1);
+				
 			}
 
 			if (instTable.getformat(operator) == 3) {
