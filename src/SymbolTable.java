@@ -107,5 +107,21 @@ public class SymbolTable
 	{
 		return symbolList.size();
 	}
-
+	
+	public int getLiteralSize(int index)
+	{
+		int size = 0;
+		
+		if (symbolList.get(index).contains("X"))
+		{
+			size = 1;
+		}
+		else if (symbolList.get(index).contains("C"))
+		{
+			String literal = symbolList.get(index).replaceAll("C|\'", "");
+			size = literal.length();
+		}
+		
+		return size;
+	}
 }

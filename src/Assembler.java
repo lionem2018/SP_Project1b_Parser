@@ -100,7 +100,11 @@ public class Assembler
 					{
 						System.out.println(TokenList.get(i).getObjectCode(j));
 					}
-
+				}
+				
+				for(int i = 0; i < codeList.size(); i++)
+				{
+					System.out.println(codeList.get(i));
 				}
 			}
 		}
@@ -136,11 +140,9 @@ public class Assembler
 
 						bufferedWriter.write(output);
 						bufferedWriter.newLine();
-						System.out.println(output);
 					}
 
 					bufferedWriter.newLine();
-					System.out.println();
 				}
 			}
 
@@ -251,14 +253,56 @@ public class Assembler
 	private void pass2()
 	{
 		// TODO Auto-generated method stub
+		Token currentToken;
+		String codeLine = "";
+		
 		for (int i = 0; i < TokenList.size(); i++)
 		{
 			for (int j = 0; j < TokenList.get(i).getSize(); j++)
 			{
 				TokenList.get(i).makeObjectCode(j);
 			}
+			
+			for(int j = 0; j < TokenList.get(i).getSize(); j++)
+			{
+				currentToken = TokenList.get(i).getToken(j);
+				
+				if(currentToken.label.equals("."))
+				{
+					continue;
+				}
+				else if(currentToken.operator.equals("START") || currentToken.operator.equals("CSECT"))
+				{
+					int startAddress = TokenList.get(i).getToken(0).location;
+					int programSize = 0;
+					for(int  k = 0; k < TokenList.get(i).getSize(); k++)
+						programSize += TokenList.get(i).getToken(k).byteSize;
+					
+					for(int k = 0; k < literalList.get(i).getSize(); k++)
+						programSize += literalList.get(i).getLiteralSize(k);
+					
+					codeLine = "H" + currentToken.label + String.format("%06X%06X", startAddress, programSize-startAddress);   /////3번째 프로그램 크기가 문제 (리터럴도 추가해줘야함)
+				}
+				else if(currentToken.operator.equals("EXTDEF"))
+				{
+					codeLine = "D";
+					for(int k = 0; k < currentToken.operand.length; k++)
+						codeLine += currentToken.operand[k];
+				}
+				else if(currentToken.operator.equals("EXTREF"))
+				{
+					codeLine = "R";
+					for(int k = 0; k < currentToken.operand.length; k++)
+						codeLine += currentToken.operand[k];
+				}
+				else
+				{
+					continue;
+				}
+				
+				codeList.add(codeLine);
+			}
 		}
-
 	}
 
 	/**
