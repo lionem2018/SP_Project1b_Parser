@@ -1,5 +1,5 @@
 import java.util.ArrayList;
-import java.util.StringTokenizer;
+
 
 /**
  * 사용자가 작성한 프로그램 코드를 단어별로 분할 한 후, 의미를 분석하고, 최종 코드로 변환하는 과정을 총괄하는 클래스이다. <br>
@@ -8,7 +8,8 @@ import java.util.StringTokenizer;
  * section 마다 인스턴스가 하나씩 할당된다.
  *
  */
-public class TokenTable {
+public class TokenTable
+{
 	public static final int MAX_OPERAND = 3;
 
 	/* bit 조작의 가독성을 위한 선언 */
@@ -21,10 +22,13 @@ public class TokenTable {
 
 	/* Token을 다룰 때 필요한 테이블들을 링크시킨다. */
 	SymbolTable symTab;
+	SymbolTable litTab;
 	InstTable instTab;
 
 	/** 각 line을 의미별로 분할하고 분석하는 공간. */
 	ArrayList<Token> tokenList;
+	
+	int programCounter;
 
 	/**
 	 * 초기화하면서 symTable과 instTable을 링크시킨다.
@@ -34,11 +38,14 @@ public class TokenTable {
 	 * @param instTab
 	 *            : instruction 명세가 정의된 instTable
 	 */
-	public TokenTable(SymbolTable symTab, InstTable instTab) {
+	public TokenTable(SymbolTable symTab, SymbolTable litTab, InstTable instTab)
+	{
 		// ...
 		tokenList = new ArrayList<>();
 		this.symTab = symTab;
+		this.litTab = litTab;
 		this.instTab = instTab;
+		programCounter = 0;
 	}
 
 	/**
@@ -47,7 +54,8 @@ public class TokenTable {
 	 * @param line
 	 *            : 분리되지 않은 일반 문자열
 	 */
-	public void putToken(String line) {
+	public void putToken(String line)
+	{
 		tokenList.add(new Token(line, instTab));
 	}
 
@@ -57,7 +65,8 @@ public class TokenTable {
 	 * @param index
 	 * @return : index번호에 해당하는 코드를 분석한 Token 클래스
 	 */
-	public Token getToken(int index) {
+	public Token getToken(int index)
+	{
 		return tokenList.get(index);
 	}
 
@@ -67,8 +76,142 @@ public class TokenTable {
 	 * 
 	 * @param index
 	 */
-	public void makeObjectCode(int index) {
+	public void makeObjectCode(int index)
+	{
 		// ...
+		programCounter += tokenList.get(index).byteSize;
+		Token currentToken = tokenList.get(index);
+		String operator = currentToken.operator;
+		int targetAddress = 0;
+		String operandData, addressData;
+		
+		if(operator == null)
+			return;
+		
+		if (operator.contains("+"))
+			operator = operator.replaceAll("[+]", "");
+
+		if (instTab.isInstruction(operator))
+		{
+			int opcode = instTab.getOpcode(operator);
+
+			if (instTab.getformat(operator) == 3)
+			{
+				opcode += currentToken.getFlag(nFlag) / iFlag;
+				opcode += currentToken.getFlag(iFlag) / iFlag;
+
+				int xbpe = 0;
+				xbpe += currentToken.getFlag(xFlag);
+				xbpe += currentToken.getFlag(bFlag);
+				xbpe += currentToken.getFlag(pFlag);
+				xbpe += currentToken.getFlag(eFlag);
+
+				if (instTab.getNumberOfOperand(operator) >= 1)
+				{
+
+					if (currentToken.getFlag(nFlag) == nFlag)
+					{
+						operandData = currentToken.operand[0];
+
+						if (operandData.contains("@"))
+							operandData = operandData.replaceAll("@", "");
+						
+						if(operandData.contains("="))
+						{
+							operandData = operandData.replaceAll("=", "");
+							targetAddress = litTab.search(operandData);
+						}
+						else
+							targetAddress = symTab.search(operandData);
+					}
+					else if (currentToken.getFlag(iFlag) == iFlag)
+					{
+						operandData = currentToken.operand[0];
+
+						if (operandData.contains("#"))
+							operandData = operandData.replaceAll("#", "");
+
+						targetAddress = Integer.parseInt(operandData);
+					}
+
+					if (currentToken.getFlag(pFlag) == pFlag)
+					{
+						targetAddress -= programCounter;
+					}
+					else if(currentToken.getFlag(eFlag) == eFlag)
+					{
+						targetAddress = 0;
+					}
+				}
+				else
+					targetAddress = 0;
+				
+				addressData = addressToString(targetAddress, currentToken.byteSize);
+
+				currentToken.objectCode = String.format("%02X%01X", opcode, xbpe) + addressData;
+				// 자바 String Format 사용할 것
+			}
+			else
+			{
+				int register1 = 0, register2 = 0;
+
+				if (instTab.getNumberOfOperand(operator) == 1)
+				{
+					if (currentToken.operand[0].equals("A"))
+						register1 = 0;
+					else if (currentToken.operand[0].equals("X"))
+						register1 = 1;
+					else if (currentToken.operand[0].equals("L"))
+						register1 = 2;
+					else if (currentToken.operand[0].equals("B"))
+						register1 = 3;
+					else if (currentToken.operand[0].equals("S"))
+						register1 = 4;
+					else if (currentToken.operand[0].equals("T"))
+						register1 = 5;
+				}
+				else
+				{
+					if (currentToken.operand[0].equals("A"))
+						register1 = 0;
+					else if (currentToken.operand[0].equals("X"))
+						register1 = 1;
+					else if (currentToken.operand[0].equals("L"))
+						register1 = 2;
+					else if (currentToken.operand[0].equals("B"))
+						register1 = 3;
+					else if (currentToken.operand[0].equals("S"))
+						register1 = 4;
+					else if (currentToken.operand[0].equals("T"))
+						register1 = 5;
+
+					if (currentToken.operand[1].equals("A"))
+						register2 = 0;
+					else if (currentToken.operand[1].equals("X"))
+						register2 = 1;
+					else if (currentToken.operand[1].equals("L"))
+						register2 = 2;
+					else if (currentToken.operand[1].equals("B"))
+						register2 = 3;
+					else if (currentToken.operand[1].equals("S"))
+						register2 = 4;
+					else if (currentToken.operand[1].equals("T"))
+						register2 = 5;
+				}
+
+				currentToken.objectCode = String.format("%02X%01X%01X", opcode, register1, register2);
+				// currentToken.objectCode = Integer.toHexString(opcode).toUpperCase() +
+				// register1 + register2;
+			}
+		}
+		else if (operator.equals("BYTE") || operator.equals("WORD"))
+		{
+			if(currentToken.operand[0].contains("X"))
+			{
+				operandData = currentToken.operand[0].replaceAll("X|\'", "");
+				currentToken.objectCode = operandData;
+			}
+		}
 	}
 
 	/**
@@ -77,17 +220,43 @@ public class TokenTable {
 	 * @param index
 	 * @return : object code
 	 */
-	public String getObjectCode(int index) {
+	public String getObjectCode(int index)
+	{
 		return tokenList.get(index).objectCode;
 	}
 
+	public int getSize()
+	{
+		return tokenList.size();
+	}
+	
+	private String addressToString(int address, int size)
+	{
+		String addressData;
+		
+		if(size == 4)
+			addressData = String.format("%05X", address);
+		else
+			addressData = String.format("%03X", address);
+		
+		if(address < 0)
+		{
+			if(size == 3)
+				addressData = addressData.substring(addressData.length()-3);
+			else if(size == 4)
+				addressData = addressData.substring(addressData.length()-5);
+		}
+
+		return addressData;
+	}
 }
 
 /**
  * 각 라인별로 저장된 코드를 단어 단위로 분할한 후 의미를 해석하는 데에 사용되는 변수와 연산을 정의한다. 의미 해석이 끝나면 pass2에서
  * object code로 변형되었을 때의 바이트 코드 역시 저장한다.
  */
-class Token {
+class Token
+{
 	// 의미 분석 단계에서 사용되는 변수들
 	int location;
 	String label;
@@ -108,7 +277,8 @@ class Token {
 	 * @param line
 	 *            문장단위로 저장된 프로그램 코드
 	 */
-	public Token(String line, InstTable instTable) {
+	public Token(String line, InstTable instTable)
+	{
 		// initialize 추가
 		this.instTable = instTable;
 		parsing(line);
@@ -120,57 +290,76 @@ class Token {
 	 * @param line
 	 *            문장단위로 저장된 프로그램 코드.
 	 */
-	public void parsing(String line) {
+	public void parsing(String line)
+	{
 		String units[] = line.split("\t");
-		
-		if (units[0].equals(".")) {
+
+		if (units[0].equals("."))
+		{
 			label = units[0];
-			
-			if(units.length > 1)
+
+			if (units.length > 1)
 				comment = units[1];
-		} else {
+		}
+		else
+		{
 			label = units[0];
 			operator = units[1];
 
-			if (!(instTable.getNumberOfOperand(operator) == 0)) {
+			if (!(instTable.getNumberOfOperand(operator) == 0))
+			{
 				if (units.length > 2)
 					operand = units[2].split(",", TokenTable.MAX_OPERAND);
 
 				if (units.length > 3)
 					comment = units[3];
-			} else {
+			}
+			else
+			{
 				if (units[2] != null)
 					comment = units[2];
 			}
 
-			if (operator.contains("+")) {
+			if (operator.contains("+"))
+			{
 				byteSize = 4;
 				setFlag(TokenTable.eFlag, 1);
-			} else {
+			}
+			else
+			{
 				byteSize = getInstSize(operator);
-				
-				if(byteSize > 0)
+
+				if (operand != null && byteSize > 0)
 					setFlag(TokenTable.pFlag, 1);
-				
 			}
 
-			if (instTable.getformat(operator) == 3) {
-				if (operand != null) {
-					if (operand.length > 1 && operand[1].equals("X")) {
+			if (byteSize >= 3)
+			{
+				if (operand != null)
+				{
+					if (operand.length > 1 && operand[1].equals("X"))
+					{
 						setFlag(TokenTable.xFlag, 1);
 					}
 
-					if (operand[0].contains("#")) {
+					if (operand[0].contains("#"))
+					{
 						setFlag(TokenTable.iFlag, 1);
 						setFlag(TokenTable.pFlag, 0);
-					} else if (operand[0].contains("@")) {
-						setFlag(TokenTable.eFlag, 1);
-					} else {
+					}
+					else if (operand[0].contains("@"))
+					{
+						setFlag(TokenTable.nFlag, 1);
+					}
+					else
+					{
 						setFlag(TokenTable.nFlag, 1);
 						setFlag(TokenTable.iFlag, 1);
 					}
 
-				} else {
+				}
+				else
+				{
 					setFlag(TokenTable.nFlag, 1);
 					setFlag(TokenTable.iFlag, 1);
 				}
@@ -191,7 +380,8 @@ class Token {
 	 * @param value
 	 *            : 집어넣고자 하는 값. 1또는 0으로 선언한다.
 	 */
-	public void setFlag(int flag, int value) {
+	public void setFlag(int flag, int value)
+	{
 		// ...
 		if (value == 1)
 			nixbpe |= flag;
@@ -210,24 +400,37 @@ class Token {
 	 *            : 값을 확인하고자 하는 비트 위치
 	 * @return : 비트위치에 들어가 있는 값. 플래그별로 각각 32, 16, 8, 4, 2, 1의 값을 리턴할 것임.
 	 */
-	public int getFlag(int flags) {
+	public int getFlag(int flags)
+	{
 		return nixbpe & flags;
 	}
 
-	public int getInstSize(String operator) {
+	public int getInstSize(String operator)
+	{
 		int size = 0;
 
-		if (instTable.isInstruction(operator)) {
+		if (instTable.isInstruction(operator))
+		{
 			size = instTable.getformat(operator);
-		} else if (operator.equals("RESB")) {
+		}
+		else if (operator.equals("RESB"))
+		{
 			size = Integer.parseInt(operand[0]);
-		} else if (operator.equals("RESW")) {
+		}
+		else if (operator.equals("RESW"))
+		{
 			size = Integer.parseInt(operand[0]) * 3;
-		} else if (operator.equals("BYTE")) {
+		}
+		else if (operator.equals("BYTE"))
+		{
 			size = 1;
-		} else if (operator.equals("WORD")) {
+		}
+		else if (operator.equals("WORD"))
+		{
 			size = 3;
 		}
+		else 
+			size = 0;
 
 		return size;
 	}

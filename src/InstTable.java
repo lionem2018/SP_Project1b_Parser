@@ -39,6 +39,7 @@ public class InstTable {
 				instName = tokens.nextToken(" ");
 				instMap.put(instName, new Instruction(line));
 			}
+			bufReader.close();
 		}
 		catch (FileNotFoundException e) {
 			System.out.println("파일을 열 수 없습니다.");
