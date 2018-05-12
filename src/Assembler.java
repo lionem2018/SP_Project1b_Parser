@@ -41,6 +41,7 @@ public class Assembler
 
 	ArrayList<SymbolTable> literalList;
 	ArrayList<SymbolTable> externalList;
+	ArrayList<SymbolTable> modifList;
 
 	static int locCounter;
 	static int programNumber;
@@ -58,6 +59,7 @@ public class Assembler
 		symtabList = new ArrayList<SymbolTable>();
 		literalList = new ArrayList<SymbolTable>();
 		externalList = new ArrayList<SymbolTable>();
+		modifList = new ArrayList<SymbolTable>();
 		TokenList = new ArrayList<TokenTable>();
 		codeList = new ArrayList<String>();
 	}
@@ -91,22 +93,20 @@ public class Assembler
 		{
 			File file = new File(fileName);
 			BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
-			String output;
 			if (file.isFile() && file.canWrite())
 			{
-				for (int i = 0; i < TokenList.size(); i++)
+				for (int i = 0; i < codeList.size(); i++)
 				{
-					for (int j = 0; j < TokenList.get(i).getSize(); j++)
+					bufferedWriter.write(codeList.get(i));
+					bufferedWriter.newLine();
+					
+					if(codeList.get(i).charAt(0) == 'E')
 					{
-						System.out.println(TokenList.get(i).getObjectCode(j));
+						bufferedWriter.newLine();
 					}
 				}
-				
-				for(int i = 0; i < codeList.size(); i++)
-				{
-					System.out.println(codeList.get(i));
-				}
 			}
+			bufferedWriter.close();
 		}
 		catch (IOException e)
 		{
@@ -180,7 +180,8 @@ public class Assembler
 				symtabList.add(new SymbolTable());
 				literalList.add(new SymbolTable());
 				externalList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(programNumber), literalList.get(programNumber), instTable));
+				modifList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(programNumber), literalList.get(programNumber), externalList.get(programNumber), instTable));
 			}
 			else if (lineList.get(i).contains("CSECT"))
 			{
@@ -190,7 +191,8 @@ public class Assembler
 				symtabList.add(new SymbolTable());
 				literalList.add(new SymbolTable());
 				externalList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(programNumber), literalList.get(programNumber), instTable));
+				modifList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(programNumber), literalList.get(programNumber), externalList.get(programNumber), instTable));
 			}
 
 			TokenList.get(programNumber).putToken(line);
@@ -235,10 +237,35 @@ public class Assembler
 						}
 					}
 				}
-				else if(currentToken.operator.equals("EXTREF"))
+				else if (currentToken.operator.equals("EXTREF"))
 				{
-					for(int j = 0; j < currentToken.operand.length; j++)
-					externalList.get(programNumber).putSymbol(currentToken.operand[j], 0);
+					for (int j = 0; j < currentToken.operand.length; j++)
+						externalList.get(programNumber).putSymbol(currentToken.operand[j], 0);
+				}
+				else if(currentToken.operand != null)
+				{
+					for(int j = 0; j < externalList.get(programNumber).getSize(); j++)
+					{
+						if(currentToken.operand[0].contains(externalList.get(programNumber).getSymbol(j)))
+						{
+							int modifSize = 6;
+							
+							if(currentToken.operator.contains("+"))
+							{
+								modifSize = 5;
+							}
+							
+							if(currentToken.operand[0].contains("-"))
+							{
+								String opSymbols[] = currentToken.operand[0].split("-");
+								modifList.get(programNumber).putModifSymbol("+"+opSymbols[0], locCounter + (6-modifSize), modifSize);
+								modifList.get(programNumber).putModifSymbol("-"+opSymbols[1], locCounter + (6-modifSize), modifSize);
+							}
+							else
+								modifList.get(programNumber).putModifSymbol("+"+currentToken.operand[0], locCounter + (6-modifSize), modifSize);
+							break;
+						}
+					}
 				}
 			}
 			locCounter += currentToken.byteSize;
@@ -255,54 +282,125 @@ public class Assembler
 		// TODO Auto-generated method stub
 		Token currentToken;
 		String codeLine = "";
-		
+		int tokenIndex = 0, lineSize = 0;
+
 		for (int i = 0; i < TokenList.size(); i++)
 		{
 			for (int j = 0; j < TokenList.get(i).getSize(); j++)
 			{
 				TokenList.get(i).makeObjectCode(j);
 			}
-			
-			for(int j = 0; j < TokenList.get(i).getSize(); j++)
+
+			for (int j = 0; j < TokenList.get(i).getSize(); j++)
 			{
 				currentToken = TokenList.get(i).getToken(j);
-				
-				if(currentToken.label.equals("."))
+
+				if (currentToken.label.equals("."))
 				{
 					continue;
 				}
-				else if(currentToken.operator.equals("START") || currentToken.operator.equals("CSECT"))
+				else if (currentToken.operator.equals("START") || currentToken.operator.equals("CSECT"))
 				{
+					tokenIndex = 0;
+
 					int startAddress = TokenList.get(i).getToken(0).location;
 					int programSize = 0;
-					for(int  k = 0; k < TokenList.get(i).getSize(); k++)
+					for (int k = 0; k < TokenList.get(i).getSize(); k++)
 						programSize += TokenList.get(i).getToken(k).byteSize;
-					
-					for(int k = 0; k < literalList.get(i).getSize(); k++)
+
+					for (int k = 0; k < literalList.get(i).getSize(); k++)
 						programSize += literalList.get(i).getLiteralSize(k);
-					
-					codeLine = "H" + currentToken.label + String.format("%06X%06X", startAddress, programSize-startAddress);   /////3번째 프로그램 크기가 문제 (리터럴도 추가해줘야함)
+
+					codeLine = "H" + currentToken.label + " "
+							+ String.format("%06X%06X", startAddress, programSize - startAddress);
 				}
-				else if(currentToken.operator.equals("EXTDEF"))
+				else if (currentToken.operator.equals("EXTDEF"))
 				{
 					codeLine = "D";
-					for(int k = 0; k < currentToken.operand.length; k++)
-						codeLine += currentToken.operand[k];
+					for (int k = 0; k < currentToken.operand.length; k++)
+						codeLine += currentToken.operand[k]
+								+ String.format("%06X", symtabList.get(i).search(currentToken.operand[k]));
 				}
-				else if(currentToken.operator.equals("EXTREF"))
+				else if (currentToken.operator.equals("EXTREF"))
 				{
 					codeLine = "R";
-					for(int k = 0; k < currentToken.operand.length; k++)
+					for (int k = 0; k < currentToken.operand.length; k++)
 						codeLine += currentToken.operand[k];
 				}
-				else
+				else if (instTable.isInstruction(currentToken.operator))
 				{
-					continue;
+					lineSize = 0;
+					tokenIndex = j;
+					while (tokenIndex < TokenList.get(i).getSize())
+					{
+						if (TokenList.get(i).getToken(tokenIndex).byteSize == 0
+								|| TokenList.get(i).getToken(tokenIndex).operator.equals("RESW")
+								|| TokenList.get(i).getToken(tokenIndex).operator.equals("RESB")
+								|| (lineSize + TokenList.get(i).getToken(tokenIndex).byteSize) > 30)
+							break;
+
+						lineSize += TokenList.get(i).getToken(tokenIndex).byteSize;
+						tokenIndex++;
+					}
+
+					codeLine = "T" + String.format("%06X%02X", currentToken.location, lineSize);
+
+					for (int k = j; k < tokenIndex; k++, j++)
+					{
+						codeLine += TokenList.get(i).getToken(k).objectCode;
+					}
+
+					j--;
 				}
-				
+				else if (currentToken.operator.equals("BYTE") | currentToken.operator.equals("WORD"))
+				{
+					lineSize = 0;
+				}
+
+				else if (currentToken.operator.equals("LTORG") || currentToken.operator.equals("END"))
+				{
+					lineSize = 0;
+					for (int k = 0; k < literalList.get(i).getSize(); k++)
+					{
+						lineSize += literalList.get(i).getLiteralSize(k);
+					}
+
+					codeLine = "T" + String.format("%06X%02X", currentToken.location, lineSize);
+
+					for (int k = 0; k < literalList.get(i).getSize(); k++)
+					{
+						String literalData = literalList.get(i).getSymbol(k);
+						if (literalData.contains("X"))
+						{
+							literalData = literalData.replaceAll("X|\'", "");
+						}
+						else if (literalData.contains("C"))
+						{
+							String temp = "";
+							literalData = literalData.replaceAll("C|\'", "");
+
+							for (int l = 0; l < literalList.get(i).getLiteralSize(k); l++)
+								temp += String.format("%02X", (int) literalData.charAt(l));
+							literalData = temp;
+						}
+						codeLine += literalData;
+					}
+				}
+				else
+					continue;
+
 				codeList.add(codeLine);
 			}
+			
+			for(int j = 0; j < modifList.get(i).getSize(); j++)
+				codeList.add("M" + String.format("%06X%02X", modifList.get(i).getLocation(j), modifList.get(i).getModifSize(j)) + modifList.get(i).getSymbol(j));
+
+			if (i == 0)
+				codeList.add("E" + String.format("%06X", TokenList.get(i).getToken(0).location));
+			else
+				codeList.add("E");
 		}
+
 	}
 
 	/**

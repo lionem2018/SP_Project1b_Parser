@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 
-
 /**
  * 사용자가 작성한 프로그램 코드를 단어별로 분할 한 후, 의미를 분석하고, 최종 코드로 변환하는 과정을 총괄하는 클래스이다. <br>
  * pass2에서 object code로 변환하는 과정은 혼자 해결할 수 없고 symbolTable과 instTable의 정보가 필요하므로
@@ -23,11 +22,12 @@ public class TokenTable
 	/* Token을 다룰 때 필요한 테이블들을 링크시킨다. */
 	SymbolTable symTab;
 	SymbolTable litTab;
+	SymbolTable extTab;
 	InstTable instTab;
 
 	/** 각 line을 의미별로 분할하고 분석하는 공간. */
 	ArrayList<Token> tokenList;
-	
+
 	int programCounter;
 
 	/**
@@ -38,12 +38,13 @@ public class TokenTable
 	 * @param instTab
 	 *            : instruction 명세가 정의된 instTable
 	 */
-	public TokenTable(SymbolTable symTab, SymbolTable litTab, InstTable instTab)
+	public TokenTable(SymbolTable symTab, SymbolTable litTab, SymbolTable extTab, InstTable instTab)
 	{
 		// ...
 		tokenList = new ArrayList<>();
 		this.symTab = symTab;
 		this.litTab = litTab;
+		this.extTab = extTab;
 		this.instTab = instTab;
 		programCounter = 0;
 	}
@@ -84,10 +85,10 @@ public class TokenTable
 		String operator = currentToken.operator;
 		int targetAddress = 0;
 		String operandData, addressData;
-		
-		if(operator == null)
+
+		if (operator == null)
 			return;
-		
+
 		if (operator.contains("+"))
 			operator = operator.replaceAll("[+]", "");
 
@@ -115,8 +116,8 @@ public class TokenTable
 
 						if (operandData.contains("@"))
 							operandData = operandData.replaceAll("@", "");
-						
-						if(operandData.contains("="))
+
+						if (operandData.contains("="))
 						{
 							operandData = operandData.replaceAll("=", "");
 							targetAddress = litTab.search(operandData);
@@ -138,14 +139,14 @@ public class TokenTable
 					{
 						targetAddress -= programCounter;
 					}
-					else if(currentToken.getFlag(eFlag) == eFlag)
+					else if (currentToken.getFlag(eFlag) == eFlag)
 					{
 						targetAddress = 0;
 					}
 				}
 				else
 					targetAddress = 0;
-				
+
 				addressData = addressToString(targetAddress, currentToken.byteSize);
 
 				currentToken.objectCode = String.format("%02X%01X", opcode, xbpe) + addressData;
@@ -206,10 +207,25 @@ public class TokenTable
 		}
 		else if (operator.equals("BYTE") || operator.equals("WORD"))
 		{
-			if(currentToken.operand[0].contains("X"))
+			if (operator.equals("BYTE"))
 			{
-				operandData = currentToken.operand[0].replaceAll("X|\'", "");
-				currentToken.objectCode = operandData;
+				if (currentToken.operand[0].contains("X"))
+				{
+					operandData = currentToken.operand[0].replaceAll("X|\'", "");
+					currentToken.objectCode = operandData;
+				}
+			}
+			else if (operator.equals("WORD"))
+			{
+				int i;
+				for (i = 0; i < extTab.getSize(); i++)
+				{
+					if (currentToken.operand[0].contains(extTab.getSymbol(i)))
+						break;
+				}
+
+				if (i < extTab.getSize())
+					currentToken.objectCode = String.format("%06X", 0);
 			}
 		}
 	}
@@ -229,22 +245,22 @@ public class TokenTable
 	{
 		return tokenList.size();
 	}
-	
+
 	private String addressToString(int address, int size)
 	{
 		String addressData;
-		
-		if(size == 4)
+
+		if (size == 4)
 			addressData = String.format("%05X", address);
 		else
 			addressData = String.format("%03X", address);
-		
-		if(address < 0)
+
+		if (address < 0)
 		{
-			if(size == 3)
-				addressData = addressData.substring(addressData.length()-3);
-			else if(size == 4)
-				addressData = addressData.substring(addressData.length()-5);
+			if (size == 3)
+				addressData = addressData.substring(addressData.length() - 3);
+			else if (size == 4)
+				addressData = addressData.substring(addressData.length() - 5);
 		}
 
 		return addressData;
@@ -429,7 +445,7 @@ class Token
 		{
 			size = 3;
 		}
-		else 
+		else
 			size = 0;
 
 		return size;

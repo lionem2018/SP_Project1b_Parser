@@ -7,12 +7,14 @@ public class SymbolTable
 {
 	ArrayList<String> symbolList;
 	ArrayList<Integer> locationList;
+	ArrayList<Integer> modifSizeList;
 	// 기타 literal, external 선언 및 처리방법을 구현한다.
 
 	public SymbolTable()
 	{
 		symbolList = new ArrayList<>();
 		locationList = new ArrayList<>();
+		modifSizeList = new ArrayList<>();
 	}
 
 	/**
@@ -38,6 +40,13 @@ public class SymbolTable
 			symbolList.add(inputSymbol);
 			locationList.add(location);
 		}
+	}
+	
+	public void putModifSymbol(String modifSymbol, int location, int modifSize)
+	{
+		symbolList.add(modifSymbol);
+		locationList.add(location);
+		modifSizeList.add(modifSize);
 	}
 
 	/**
@@ -123,5 +132,10 @@ public class SymbolTable
 		}
 		
 		return size;
+	}
+	
+	public int getModifSize(int index)
+	{
+		return modifSizeList.get(index);
 	}
 }
