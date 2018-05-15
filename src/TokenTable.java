@@ -110,7 +110,7 @@ public class TokenTable
 			int opcode = instTab.getOpcode(operator);
 
 			// 3또는 4형식 명령어인 경우
-			if (instTab.getformat(operator) == 3)
+			if (instTab.getFormat(operator) == 3)
 			{
 				// 현재 token의 nFlag와 iFlag 정보를 opcode에 표시
 				opcode += currentToken.getFlag(nFlag) / iFlag;
@@ -192,7 +192,7 @@ public class TokenTable
 				currentToken.objectCode = String.format("%02X%01X", opcode, xbpe) + addressData;
 			}
 			// 2형식 명령어인 경우
-			else if (instTab.getformat(operator) == 2)
+			else if (instTab.getFormat(operator) == 2)
 			{
 				// register1, register2: 레지스터 번호를 저장
 				int register1 = 0, register2 = 0;
@@ -537,7 +537,7 @@ class Token
 		if (instTable.isInstruction(operator))
 		{
 			// instruction table 상의 형식을 크기값으로서 지정
-			size = instTable.getformat(operator);
+			size = instTable.getFormat(operator);
 		}
 		// "RESB" 지시어인 경우
 		else if (operator.equals("RESB"))

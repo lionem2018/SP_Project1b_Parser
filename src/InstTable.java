@@ -112,7 +112,7 @@ public class InstTable {
 	 * @param instName: 형식을 구할 명령어
 	 * @return: 해당 명령어의 형식
 	 */
-	public int getformat(String instName)
+	public int getFormat(String instName)
 	{
 		int format = 0;
 		

@@ -10,6 +10,9 @@ public class SymbolTable
 	ArrayList<Integer> modifSizeList;  // modification table에서 수정할 바이트의 크기를 저장하는 리스트
 	// 기타 literal, external 선언 및 처리방법을 구현한다.
 
+	/**
+	 * 클래스 내 필드로 존재하는 리스트들 객체 생성한다.
+	 */
 	public SymbolTable()
 	{
 		// ArrayList 객체를 생성하여 초기화
@@ -182,6 +185,11 @@ public class SymbolTable
 		return size;
 	}
 	
+	/**
+	 * modification table 상에 해당 인덱스의 수정할 바이트 사이즈를 리턴한다.
+	 * @param index: 수정할 바이트 사이즈를 구할 심볼의 테이블 상의 위치
+	 * @return: 수정할 바이트 크기
+	 */
 	public int getModifSize(int index)
 	{
 		return modifSizeList.get(index);
