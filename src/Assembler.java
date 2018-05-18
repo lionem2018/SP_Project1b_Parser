@@ -191,7 +191,7 @@ public class Assembler
 		// input파일을 통해 읽어들인 소스코드의 라인 수만큼 반복
 		for (int i = 0; i < lineList.size(); i++)
 		{
-			// lineList로 부터 토큰 파싱할 라인을 가져옴
+			// lineList로부터 토큰 파싱할 라인을 가져옴
 			line = lineList.get(i);
 
 			// 라인에 "START" 문자열이 포함된 경우
@@ -405,9 +405,10 @@ public class Assembler
 					for (int k = 0; k < currentToken.operand.length; k++)
 						codeLine += currentToken.operand[k];
 				}
-				// 토큰의 연산자가 명령어인 경우
+				// 토큰의 연산자가 명령어이거나 "BYTE", "WORD" 지시어인 경우
 				// Text record 작성
-				else if (instTable.isInstruction(currentToken.operator))
+				else if (instTable.isInstruction(currentToken.operator)
+						| currentToken.operator.equals("BYTE") | currentToken.operator.equals("WORD"))
 				{
 					lineSize = 0;
 					tokenIndex = j;
@@ -434,12 +435,6 @@ public class Assembler
 					}
 
 					j--;
-				}
-				// 토큰의 연산자가 "BYTE" 지시어나 "WORD" 지시어인 경우
-				// 별 다른 동작 없이 넘어감
-				else if (currentToken.operator.equals("BYTE") | currentToken.operator.equals("WORD"))
-				{
-					lineSize = 0;
 				}
 				// 토큰의 연산자가 "LTORG" 지시어나 "END" 지시어인 경우
 				// 해당 섹션 프로그램의 리터럴 값들을 오브젝트 코드로 생성
@@ -512,7 +507,8 @@ public class Assembler
 		// TODO Auto-generated method stub
 		try
 		{
-			// 인자로 들어온 이름의 파일을 열어, input 소스코드를 읽어오기 위해 BufferedReader를 생성
+			// 인자로 들어온 이름의 파일을 열어
+			// input 소스코드를 읽어오기 위해 BufferedReader를 생성
 			File file = new File(inputFile);
 			FileReader fileReader = new FileReader(file);
 			BufferedReader bufReader = new BufferedReader(fileReader);
